@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16
+    container_name: emendas_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: emendas_api
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  etl:
+    build: ./etl
+    container_name: emendas_etl
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      SHEETS_CSV_URL: ${SHEETS_CSV_URL}
+      # MODE=replace apaga e reinsere tudo
+      MODE: replace
+    depends_on:
+      - db
+    # Não roda automaticamente; você chama quando quiser:
+    # docker compose run --rm etl
+
+  frontend:
+    build: ./frontend
+    container_name: emendas_front
+    environment:
+      VITE_API_BASE: http://localhost:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
